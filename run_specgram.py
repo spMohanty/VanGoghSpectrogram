@@ -31,10 +31,25 @@ import numpy as np
 import mic_read
 
 ############### Constants ###############
-SAMPLES_PER_FRAME = 10 #Number of mic reads concatenated within a single window
-nfft = 1024 #NFFT value for spectrogram
+SAMPLES_PER_FRAME = 50   #Number of mic reads concatenated within a single window
+nfft = 2048 #NFFT value for spectrogram
 overlap = 512 #overlap value for spectrogram
 rate = mic_read.RATE #sampling rate
+
+
+##### Style specific hyperparams
+## Noise Cancellation + Normalisation 
+eps = 1e-17
+thresh = -10
+# Beethoven
+# eps = 1e-17
+# thresh = -5
+# YLIMIT = 1000
+# cmap = plt.cm.afmhot
+YLIMIT = 4500
+CMAP = 'viridis'
+
+
 
 ############### Functions ###############
 """
@@ -54,14 +69,27 @@ output: 2D Spectrogram Array, Frequency Array, Bin Array
 see matplotlib.mlab.specgram documentation for help
 """
 def get_specgram(signal,rate):
-    arr2D,freqs,bins = specgram(
-                                signal,
-                                window=window_hanning,
-                                Fs = rate,
-                                NFFT=nfft,
-                                detrend="linear",
-                                noverlap=overlap
-                                )
+    freqs,bins, arr2D = scipy.signal.spectrogram(
+        x=signal,
+        fs=rate,
+        noverlap=overlap,
+        nperseg=nfft,
+        nfft=nfft,
+        detrend=False,
+        return_onesided=True
+    )
+    # arr2D,freqs,bins = specgram(
+    #                             signal,
+    #                             window=window_hanning,
+    #                             Fs = rate,
+    #                             NFFT=nfft,
+    #                             detrend="linear",
+    #                             noverlap=overlap
+    #                             )
+    arr2D /= arr2D.max()
+    arr2D = np.log(arr2D + eps)
+    arr2D[arr2D < thresh ] = thresh
+    
     return arr2D,freqs,bins
 
 """
@@ -77,7 +105,7 @@ def update_fig(n):
     arr2D,freqs,bins = get_specgram(data,rate)
     im_data = im.get_array()
     if n < SAMPLES_PER_FRAME:
-        im_data = np.hstack((im_data,arr2D))
+        im_data = np.hstack((im_data,arr2D))    
         im.set_array(im_data)
     else:
         keep_block = arr2D.shape[1]*(SAMPLES_PER_FRAME - 1)
@@ -94,21 +122,27 @@ Launch the stream and the original spectrogram
 stream,pa = mic_read.open_mic()
 data = get_sample(stream,pa)
 arr2D,freqs,bins = get_specgram(data,rate)
+print(arr2D.min(), arr2D.max())
 """
 Setup the plot paramters
 """
 extent = (bins[0],bins[-1]*SAMPLES_PER_FRAME,freqs[-1],freqs[0])
-im = plt.imshow(arr2D,aspect='auto',extent = extent,interpolation="none",
-                cmap = 'viridis',norm = LogNorm(vmin=.01,vmax=1))
-plt.xlabel('Time (s)')
-plt.ylabel('Frequency (Hz)')
-plt.title('Real Time Spectogram')
+
+im = plt.imshow(arr2D,aspect='auto',extent = extent,interpolation="bicubic",
+                cmap = CMAP)
+
+# plt.xlabel('Time (s)')
+# plt.ylabel('Frequency (Hz)')
+# plt.title('Real Time Spectogram')
 plt.gca().invert_yaxis()
+# plt.axis('off')
+# plt.yscale('log')
+plt.ylim((50, YLIMIT))
 ##plt.colorbar() #enable if you want to display a color bar
 
 ############### Animate ###############
 anim = animation.FuncAnimation(fig,update_fig,blit = False,
-                               interval=mic_read.CHUNK_SIZE/1000)
+                               interval=mic_read.CHUNK_SIZE/2000)
 try:
     plt.show()
 except:

@@ -12,10 +12,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ############### Constants ###############
-RATE = 44100 #sample rate
+RATE = 16000 #sample rate
 FORMAT = pyaudio.paInt16 #conversion format for PyAudio stream
 CHANNELS = 1 #microphone audio channels
-CHUNK_SIZE = 8192 #number of samples to take per read
+CHUNK_SIZE = 4000 #number of samples to take per read
 SAMPLE_LENGTH = int(CHUNK_SIZE*1000/RATE) #length of each sample in ms
 
 ############### Functions ###############
