@@ -20,6 +20,7 @@ import matplotlib
 # print("Using:",matplotlib.get_backend())
 import scipy
 from scipy import signal
+from scipy.signal import butter, lfilter
 
 from matplotlib.mlab import window_hanning,specgram
 import matplotlib.pyplot as plt
@@ -42,7 +43,7 @@ def butter_bandpass(lowcut, highcut, fs, order=5):
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
     b, a = butter_bandpass(lowcut, highcut, fs, order=order)
     y = lfilter(b, a, data)
-    return y
+    return y    
 
 ############### Constants ###############
 SAMPLES_PER_FRAME = 50   #Number of mic reads concatenated within a single window
