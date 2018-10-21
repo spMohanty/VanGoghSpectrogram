@@ -36,6 +36,8 @@ nfft = 2048 #NFFT value for spectrogram
 overlap = 512 #overlap value for spectrogram
 rate = mic_read.RATE #sampling rate
 
+lowcut = 500 # Hz # Low cut for our butter bandpass filter
+highcut = 15000 # Hz # High cut for our butter bandpass filter
 
 ##### Style specific hyperparams
 ## Noise Cancellation + Normalisation 
@@ -60,6 +62,7 @@ outputs: int16 array
 """
 def get_sample(stream,pa):
     data = mic_read.get_data(stream,pa)
+    data = butter_bandpass_filter(data, lowcut, highcut, rate, order=1)
     return data
 """
 get_specgram:
@@ -153,3 +156,16 @@ stream.stop_stream()
 stream.close()
 pa.terminate()
 print("Program Terminated")
+
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = lfilter(b, a, data)
+    return y
+
