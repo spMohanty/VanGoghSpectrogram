@@ -8,6 +8,7 @@ Dependencies: matplotlib, numpy and the mic_read.py module
 """
 ############### Import Libraries ###############
 import matplotlib
+import io
 # gui_env = ['TKAgg','GTKAgg','Qt4Agg','WXAgg']
 # for gui in gui_env:
 #     try:
@@ -22,6 +23,8 @@ import scipy
 from scipy import signal
 from scipy.signal import butter, lfilter
 
+import requests
+
 from matplotlib.mlab import window_hanning,specgram
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -30,6 +33,8 @@ import numpy as np
 
 ############### Import Modules ###############
 import mic_read
+
+from PIL import Image
 
 
 ############### Helper Functions ############
@@ -51,13 +56,13 @@ nfft = 2048 #NFFT value for spectrogram
 overlap = 512 #overlap value for spectrogram
 rate = mic_read.RATE #sampling rate
 
-lowcut = 500 # Hz # Low cut for our butter bandpass filter
-highcut = 15000 # Hz # High cut for our butter bandpass filter
+lowcut = 100 # Hz # Low cut for our butter bandpass filter
+highcut = 5000 # Hz # High cut for our butter bandpass filter
 
 ##### Style specific hyperparams
 ## Noise Cancellation + Normalisation 
 eps = 1e-17
-thresh = -10
+thresh = -5
 # Beethoven
 # eps = 1e-17
 # thresh = -5
@@ -77,7 +82,7 @@ outputs: int16 array
 """
 def get_sample(stream,pa):
     data = mic_read.get_data(stream,pa)
-    data = butter_bandpass_filter(data, lowcut, highcut, rate, order=1)
+    #data = butter_bandpass_filter(data, lowcut, highcut, rate, order=1)
     return data
 """
 get_specgram:
@@ -130,10 +135,26 @@ def update_fig(n):
         im_data = np.delete(im_data,np.s_[:-keep_block],1)
         im_data = np.hstack((im_data,arr2D))
         im.set_array(im_data)
+    
+    print("Iteration : ", n)
+    fig.savefig("source.jpg")
     return im,
 
+def update_fig_2(n):
+    plt.figure(2)
+    addr = 'http://iccluster026.iccluster.epfl.ch:5001'
+    test_url = addr + '/api/style/rain_princess'
+    
+    # prepare headers for http request
+    data = open('source.jpg', 'rb').read()
+    response = requests.post(test_url, data=data)
+    image_data = response.content
+    art_image = Image.open(io.BytesIO(image_data))
+    print(art_image.shape)
+    # im_art.set_array(art_image)
+
 ############### Initialize Plot ###############
-fig = plt.figure()
+fig = plt.figure(1)
 """
 Launch the stream and the original spectrogram
 """
@@ -153,14 +174,35 @@ im = plt.imshow(arr2D,aspect='auto',extent = extent,interpolation="bicubic",
 # plt.ylabel('Frequency (Hz)')
 # plt.title('Real Time Spectogram')
 plt.gca().invert_yaxis()
-# plt.axis('off')
+plt.axis('off')
 # plt.yscale('log')
 plt.ylim((50, YLIMIT))
 ##plt.colorbar() #enable if you want to display a color bar
 
+# fig_2 = plt.figure(2)
+# 
+# addr = 'http://iccluster026.iccluster.epfl.ch:5001'
+# test_url = addr + '/api/style/rain_princess'
+# 
+# # prepare headers for http request
+# content_type = 'image/jpeg'
+# headers = {'content-type': content_type}
+# data = open('source.jpg', 'rb').read()
+# response = requests.post(test_url, data=data)
+# image_data = response.content
+# art_image = Image.open(io.BytesIO(image_data))
+# im_art = plt.imshow(art_image)
+
+
 ############### Animate ###############
 anim = animation.FuncAnimation(fig,update_fig,blit = False,
                                interval=mic_read.CHUNK_SIZE/2000)
+
+# anim_np = animation.FuncAnimation(fig_2,update_fig_2,blit = False,
+#                                interval=2)
+# 
+
+
 try:
     plt.show()
 except:
